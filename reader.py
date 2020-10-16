@@ -19,6 +19,7 @@ class WikiReader(ContentHandler):
         self.callback = callback
 
     def startElement(self, tag_name, attributes):
+        logging.debug("Startujem element: " + tag_name)
         if tag_name == "ns":
             self.namespace = None
 
@@ -37,8 +38,12 @@ class WikiReader(ContentHandler):
         self.stack.append(tag_name)
 
     def endElement(self, tag_name):
-        if tag_name == self.stack[-1]:
-            del self.stack[-1]
+        logging.debug("Koncim element: " + tag_name)
+        try:
+            if tag_name == self.stack[-1]:
+                del self.stack[-1]
+        except IndexError:
+            pass
 
         if self.filter(self.namespace):
             if tag_name == "page" and self.text is not None and self.title is not None:
@@ -46,6 +51,7 @@ class WikiReader(ContentHandler):
                 self.callback((self.title, self.text))
 
     def characters(self, content):
+        logging.debug("Obsah" + content)
         if len(self.stack) == 0:
             return
 
@@ -56,4 +62,4 @@ class WikiReader(ContentHandler):
             self.title += content
 
         if self.stack[-1] == "ns":
-            self.ns = int(content)
+            self.namespace = int(content)
