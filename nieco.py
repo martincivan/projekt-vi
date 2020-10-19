@@ -1,16 +1,18 @@
-import json
 import logging
 import multiprocessing
 import os
+import random
 import time
 from argparse import ArgumentParser
 from bz2 import BZ2File
 from multiprocessing.context import Process
 from threading import Thread
 from xml.sax import parse
-from reader import WikiReader
+
 from elasticsearch import Elasticsearch, NotFoundError
 from elasticsearch.helpers import parallel_bulk
+
+from reader import WikiReader
 
 INDEX = "vi_index_to"
 
@@ -72,47 +74,71 @@ def get_anchors(source: str):
 
 
 def process_article():
-    while not (shutdown and aq.empty()):
+    buffer = {}
+    while not (shutdown and article_queue.empty()):
         logging.debug("processujem artikel")
-        page_title, source = aq.get()
+        try:
+            page_title, source = article_queue.get()
+        except EOFError:
+            continue
         logging.debug("mam titel: " + page_title)
         for anchor in get_anchors(source):
             anchor = anchor.split("|")
             link_to = anchor[0]
             anchor_text = anchor[1] if len(anchor) == 2 else link_to
-            if link_to is not None:
-                fq.put({"page_from": page_title, "anchor_text": anchor_text, "page_to": link_to})
+            if link_to is not None and len(link_to) > 0:
+                # fq.put()
+                line = {"page_from": page_title, "anchor_text": anchor_text}
+                page_to = link_to
+                if page_to not in buffer.keys():
+                    buffer[page_to] = []
+                buffer[page_to].append(line)
+                if len(buffer[page_to]) == 100:
+                    output_queue.put(create_action(page_to, buffer.pop(page_to)))
+                # if len(buffer) == 1000:
+
+                if len(buffer) > 100000:
+                    for key in random.sample(list(buffer.keys()), k=2000):
+                        output_queue.put(create_action(key, buffer.pop(key)))
+    for k in buffer.keys():
+        output_queue.put(create_action(k, buffer[k]))
+
+
+def create_action(page_to, line):
+    return {
+        "_index": INDEX,
+        "_id": page_to,
+        "_op_type": "update",
+        "retry_on_conflict": 6,
+        "_source": {
+            "script": {
+                "source": "ctx._source.anchors.addAll(params.anchor)",
+                "lang": "painless",
+                "params": {
+                    "anchor": line
+                }
+            },
+            "upsert": {
+                "page_to": page_to,
+                "anchors": line,
+            }
+        }
+    }
 
 
 def get_actions():
-    while not (shutdown and fq.empty()):
-        line = fq.get()
-        page_to = line.pop("page_to")
-        yield {
-            "_index": INDEX,
-            "_id": page_to,
-            "_op_type": "update",
-            "_source": {
-                "script": {
-                    "source": "ctx._source.anchors.add(params.anchor)",
-                    "lang": "painless",
-                    "params": {
-                        "anchor": line
-                    }
-                },
-                "upsert": {
-                    "page_to": page_to,
-                    "anchors": [line],
-                }
-            }
-        }
+    while not (shutdown and output_queue.empty()):
+        try:
+            yield output_queue.get()
+        except EOFError:
+            continue
 
 
 def write_out():
     esx = Elasticsearch()
     # bulk = []
-    while not (shutdown and fq.empty()):
-        for success, info in parallel_bulk(client=esx, actions=get_actions(), thread_count=8):
+    while not (shutdown and output_queue.empty()):
+        for success, info in parallel_bulk(client=esx, actions=get_actions(), chunk_size=250, request_timeout=60):
             if not success:
                 print("Insert failed: ", info)
     #     line = fq.get()
@@ -134,8 +160,8 @@ def write_out():
 def display():
     while not shutdown:
         logging.warning("Queue sizes: aq={0} fq={1}. Read: {2}".format(
-            aq.qsize(),
-            fq.qsize(),
+            article_queue.qsize(),
+            output_queue.qsize(),
             reader.status_count))
         time.sleep(1)
 
@@ -152,19 +178,19 @@ if __name__ == "__main__":
     out_file = open(os.path.join(args.out), "w+")
 
     manager = multiprocessing.Manager()
-    fq = manager.Queue(maxsize=2000)
-    aq = manager.Queue(maxsize=2000)
+    output_queue = manager.Queue(maxsize=2000)
+    article_queue = manager.Queue(maxsize=2000)
 
-    reader = WikiReader(lambda ns: ns == 0, aq.put)
+    reader = WikiReader(lambda ns: ns == 0, article_queue.put)
 
     status = Thread(target=display, args=())
     status.start()
 
     processes = []
-    for _ in range(2):
+    for _ in range(8):
         process = Process(target=process_article)
         process.start()
-
+        processes.append(process)
     # for _ in range(14):
     #     process = Process(target=write_out)
     #     process.start()
@@ -173,3 +199,7 @@ if __name__ == "__main__":
     write_thread.start()
     parse(wiki, reader)
     shutdown = True
+    for process in processes:
+        process.join()
+    write_thread.join()
+    status.join()
