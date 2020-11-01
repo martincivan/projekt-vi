@@ -3,6 +3,7 @@ import multiprocessing
 import os
 import random
 import time
+import spacy
 from argparse import ArgumentParser
 from bz2 import BZ2File
 from multiprocessing.context import Process
@@ -31,6 +32,22 @@ mapping = {
                     },
                     "page_from": {
                         "type": "keyword"
+                    },
+                    "entities": {
+                        "properties": {
+                            "text": {
+                                "type": "keyword"
+                            },
+                            "start": {
+                                "type": "short"
+                            },
+                            "end": {
+                                "type": "short"
+                            },
+                            "label": {
+                                "type": "keyword"
+                            }
+                        }
                     }
                 }
             }
@@ -75,6 +92,8 @@ def get_anchors(source: str):
 
 def process_article():
     buffer = {}
+    nlp_cache = {}
+    nlp = spacy.load("xx_ent_wiki_sm")
     while not (shutdown and article_queue.empty()):
         logging.debug("processujem artikel")
         try:
@@ -88,7 +107,14 @@ def process_article():
             anchor_text = anchor[1] if len(anchor) == 2 else link_to
             if link_to is not None and len(link_to) > 0:
                 # fq.put()
-                line = {"page_from": page_title, "anchor_text": anchor_text}
+                if anchor_text not in nlp_cache:
+                    doc = nlp(anchor_text)
+                    if len(nlp_cache) == 100000:
+                        for key in random.sample(list(nlp_cache.keys()), k=10):
+                            del nlp_cache[key]
+                    nlp_cache[anchor_text] = [{"text": ent.text, "start": ent.start_char, "end": ent.end_char, "label": ent.label_} for ent in doc.ents]
+
+                line = {"page_from": page_title, "anchor_text": anchor_text, "entities": nlp_cache[anchor_text]}
                 page_to = link_to
                 if page_to not in buffer.keys():
                     buffer[page_to] = []
@@ -187,7 +213,7 @@ if __name__ == "__main__":
     status.start()
 
     processes = []
-    for _ in range(8):
+    for _ in range(14):
         process = Process(target=process_article)
         process.start()
         processes.append(process)
