@@ -1,21 +1,26 @@
 import logging
 import multiprocessing
 import os
-import random
 import time
-import spacy
+import re
 from argparse import ArgumentParser
 from bz2 import BZ2File
 from multiprocessing.context import Process
+from queue import Empty
 from threading import Thread
 from xml.sax import parse
 
-from elasticsearch import Elasticsearch, NotFoundError
+from elasticsearch import Elasticsearch, NotFoundError, ElasticsearchException
 from elasticsearch.helpers import parallel_bulk
 
+from nlp import NLP, TownProvider, GeoProvider, Cache, NameProvider
 from reader import WikiReader
 
-INDEX = "vi_index_to"
+INDEX = "vi_index_to2"
+
+
+# TODO: offline statistiky vyskytov entit
+
 
 logging.getLogger().setLevel(logging.WARN)
 
@@ -25,30 +30,34 @@ mapping = {
             "page_to": {
                 "type": "keyword"
             },
+            "page_to_entity": {
+                "type": "keyword"
+            },
             "anchors": {
                 "properties": {
                     "anchor_text": {
-                        "type": "text"
+                        "type": "text",
+                        "term_vector": "with_positions"
                     },
                     "page_from": {
                         "type": "keyword"
                     },
-                    "entities": {
-                        "properties": {
-                            "text": {
-                                "type": "keyword"
-                            },
-                            "start": {
-                                "type": "short"
-                            },
-                            "end": {
-                                "type": "short"
-                            },
-                            "label": {
-                                "type": "keyword"
-                            }
-                        }
-                    }
+                    # "entities": {
+                    #     "properties": {
+                    #         "text": {
+                    #             "type": "keyword"
+                    #         },
+                    #         "start": {
+                    #             "type": "short"
+                    #         },
+                    #         "end": {
+                    #             "type": "short"
+                    #         },
+                    #         "label": {
+                    #             "type": "keyword"
+                    #         }
+                    #     }
+                    # }
                 }
             }
         }
@@ -64,148 +73,138 @@ es.indices.create(index=INDEX, body=mapping)
 
 
 def get_anchors(source: str):
-    begins = []
-    results = []
-
-    act_begin = False
-    act_end = False
-    for num, char in enumerate(source):
-        if char == "[":
-            if act_begin:
-                begins.append(num + 1)
-            act_begin = not act_begin
-        else:
-            act_begin = False
-        if char == "]":
-            if act_end:
-                try:
-                    results.append((begins.pop(), num - 1))
-                except IndexError:
-                    print(source)
-                    print(begins)
-            act_end = not act_end
-        else:
-            act_end = False
-    for begin, end in results:
-        yield source[begin:end]
+    for match in re.finditer(pattern="\[\[(.*?)\]\]", string=source):
+        yield match.group(1)
 
 
-def process_article():
-    buffer = {}
-    nlp_cache = {}
-    nlp = spacy.load("xx_ent_wiki_sm")
-    while not (shutdown and article_queue.empty()):
-        logging.debug("processujem artikel")
+class ArticleProcessor:
+
+    def __init__(self, provider, output) -> None:
+        super().__init__()
+        self.output = output
+        self.provider = provider
+
+    def __call__(self):
+        for page_title, source in self.provider:
+            for anchor in get_anchors(source=source):
+                anchor = anchor.split("|")
+                link_to = anchor[0]
+                anchor_text = anchor[1] if len(anchor) == 2 else link_to
+                self.output({
+                    "page_from": page_title,
+                    "page_to": link_to,
+                    "anchor_text": anchor_text
+                })
+
+
+class ESWriter:
+
+    def __init__(self, iterator) -> None:
+        super().__init__()
+        self.iterator = iterator
+        self.esx = Elasticsearch()
+
+    def __call__(self):
         try:
-            page_title, source = article_queue.get()
-        except EOFError:
-            continue
-        logging.debug("mam titel: " + page_title)
-        for anchor in get_anchors(source):
-            anchor = anchor.split("|")
-            link_to = anchor[0]
-            anchor_text = anchor[1] if len(anchor) == 2 else link_to
-            if link_to is not None and len(link_to) > 0:
-                # fq.put()
-                if anchor_text not in nlp_cache:
-                    doc = nlp(anchor_text)
-                    if len(nlp_cache) == 100000:
-                        for key in random.sample(list(nlp_cache.keys()), k=10):
-                            del nlp_cache[key]
-                    nlp_cache[anchor_text] = [{"text": ent.text, "start": ent.start_char, "end": ent.end_char, "label": ent.label_} for ent in doc.ents]
+            for success, info in parallel_bulk(client=self.esx, actions=self.preprocess(read_from_queue(output_queue)),
+                                               chunk_size=250, request_timeout=60):
+                if not success:
+                    print("Insert failed: ", info)
+        except ElasticsearchException:
+            print("NEVYDALO :(")
+            self.__call__()
 
-                line = {"page_from": page_title, "anchor_text": anchor_text, "entities": nlp_cache[anchor_text]}
-                page_to = link_to
-                if page_to not in buffer.keys():
-                    buffer[page_to] = []
-                buffer[page_to].append(line)
-                if len(buffer[page_to]) == 100:
-                    output_queue.put(create_action(page_to, buffer.pop(page_to)))
-                # if len(buffer) == 1000:
+    def preprocess(self, iterator):
+        for i in iterator:
+            yield self.create_action(**i)
 
-                if len(buffer) > 100000:
-                    for key in random.sample(list(buffer.keys()), k=2000):
-                        output_queue.put(create_action(key, buffer.pop(key)))
-    for k in buffer.keys():
-        output_queue.put(create_action(k, buffer[k]))
-
-
-def create_action(page_to, line):
-    return {
-        "_index": INDEX,
-        "_id": page_to,
-        "_op_type": "update",
-        "retry_on_conflict": 6,
-        "_source": {
-            "script": {
-                "source": "ctx._source.anchors.addAll(params.anchor)",
-                "lang": "painless",
-                "params": {
-                    "anchor": line
+    @staticmethod
+    def create_action(page_to, page_to_entity, anchors):
+        return {
+            "_index": INDEX,
+            "_id": page_to,
+            "_op_type": "update",
+            "retry_on_conflict": 6,
+            "_source": {
+                "script": {
+                    "source": "ctx._source.anchors.addAll(params.anchor)",
+                    "lang": "painless",
+                    "params": {
+                        "anchor": anchors
+                    }
+                },
+                "upsert": {
+                    "page_to": page_to,
+                    "anchors": anchors,
+                    "page_to_entity": page_to_entity
                 }
-            },
-            "upsert": {
-                "page_to": page_to,
-                "anchors": line,
             }
         }
-    }
 
 
-def get_actions():
-    while not (shutdown and output_queue.empty()):
-        try:
-            yield output_queue.get()
-        except EOFError:
-            continue
+class Aggregator:
 
+    def __init__(self, provider, output) -> None:
+        super().__init__()
+        self.provider = provider
+        self.output = output
+        self.nlp = NLP(NameProvider("/home/martin/Dokumenty/skola/vi/gn_csv/mena.csv"),
+                       TownProvider("/home/martin/Dokumenty/skola/vi/gn_csv/GNKU.csv"),
+                       GeoProvider("/home/martin/Dokumenty/skola/vi/gn_csv/geograficky_nazov.csv"))
+        self.cache = Cache(100000, output)
 
-def write_out():
-    esx = Elasticsearch()
-    # bulk = []
-    while not (shutdown and output_queue.empty()):
-        for success, info in parallel_bulk(client=esx, actions=get_actions(), chunk_size=250, request_timeout=60):
-            if not success:
-                print("Insert failed: ", info)
-    #     line = fq.get()
-    #     esx.update(index=INDEX, id=line["page_to"], params={"retry_on_conflict": 6}, body={
-    #         "script": {
-    #             "source": "ctx._source.anchors.add(params.anchor)",
-    #             "lang": "painless",
-    #             "params": {
-    #                 "anchor": line
-    #             }
-    #         },
-    #         "upsert": {
-    #             "page_to": line["page_to"],
-    #             "anchors": [line],
-    #         }
-    #     })
+    def __call__(self):
+        for i in self.provider:
+            if i["page_to"] not in self.cache:
+                self.cache[i["page_to"]] = {
+                    "page_to": i["page_to"],
+                    "page_to_entity": self.nlp[i["page_to"]],
+                    "anchors": []
+                }
+            self.cache[i["page_to"]]["anchors"].append({"page_from": i["page_from"], "anchor_text": i["anchor_text"]})
+        for i in self.cache:
+            self.output(i)
 
 
 def display():
     while not shutdown:
-        logging.warning("Queue sizes: aq={0} fq={1}. Read: {2}".format(
+        logging.warning("Queue sizes: articles={0} anchors={1} output={2}. Read: {3}".format(
             article_queue.qsize(),
+            anchor_queue.qsize(),
             output_queue.qsize(),
             reader.status_count))
         time.sleep(1)
+
+
+def read_from_queue(queue):
+    while not shutdown or not queue.empty():
+        try:
+            yield queue.get(timeout=1)
+        except EOFError:
+            continue
+        except Empty:
+            continue
+
+
+def process_article():
+    ArticleProcessor(read_from_queue(article_queue), anchor_queue.put)()
 
 
 if __name__ == "__main__":
     shutdown = False
     parser = ArgumentParser()
     parser.add_argument("wiki", help="wiki dump file .xml.bz2")
-    parser.add_argument("out", help="final file .txt")
+    # parser.add_argument("out", help="final file .txt")
     args = parser.parse_args()
     logging.debug("subor: " + args.wiki)
     wiki = BZ2File(args.wiki)
     logging.debug("nacitane")
-    out_file = open(os.path.join(args.out), "w+")
+    # out_file = open(os.path.join(args.out), "w+")
 
     manager = multiprocessing.Manager()
     output_queue = manager.Queue(maxsize=2000)
     article_queue = manager.Queue(maxsize=2000)
+    anchor_queue = manager.Queue(maxsize=2000)
 
     reader = WikiReader(lambda ns: ns == 0, article_queue.put)
 
@@ -213,19 +212,27 @@ if __name__ == "__main__":
     status.start()
 
     processes = []
-    for _ in range(14):
+    for _ in range(2):
         process = Process(target=process_article)
         process.start()
         processes.append(process)
     # for _ in range(14):
     #     process = Process(target=write_out)
     #     process.start()
-
-    write_thread = Thread(target=write_out)
+    aggregators = []
+    for _ in range(13):
+        aggregator = Aggregator(provider=read_from_queue(anchor_queue), output=output_queue.put)
+        agg_thread = Process(target=aggregator)
+        agg_thread.start()
+        aggregators.append(agg_thread)
+    writer = ESWriter(output_queue)
+    write_thread = Thread(target=writer)
     write_thread.start()
     parse(wiki, reader)
     shutdown = True
     for process in processes:
+        process.join()
+    for process in aggregators:
         process.join()
     write_thread.join()
     status.join()
