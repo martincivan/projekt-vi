@@ -1,6 +1,6 @@
+import json
 import logging
 import multiprocessing
-import os
 import time
 import re
 from argparse import ArgumentParser
@@ -10,13 +10,14 @@ from queue import Empty
 from threading import Thread
 from xml.sax import parse
 
+import psutil as psutil
 from elasticsearch import Elasticsearch, NotFoundError, ElasticsearchException
 from elasticsearch.helpers import parallel_bulk
 
 from nlp import NLP, TownProvider, GeoProvider, Cache, NameProvider
 from reader import WikiReader
 
-INDEX = "vi_index_to2"
+INDEX = "vi_index_to"
 
 
 # TODO: offline statistiky vyskytov entit
@@ -90,11 +91,12 @@ class ArticleProcessor:
                 anchor = anchor.split("|")
                 link_to = anchor[0]
                 anchor_text = anchor[1] if len(anchor) == 2 else link_to
-                self.output({
-                    "page_from": page_title,
-                    "page_to": link_to,
-                    "anchor_text": anchor_text
-                })
+                if link_to is not None and len(link_to) > 0:
+                    self.output({
+                        "page_from": page_title,
+                        "page_to": link_to,
+                        "anchor_text": anchor_text
+                    })
 
 
 class ESWriter:
@@ -103,19 +105,30 @@ class ESWriter:
         super().__init__()
         self.iterator = iterator
         self.esx = Elasticsearch()
+        self.counts = {}
 
     def __call__(self):
-        try:
-            for success, info in parallel_bulk(client=self.esx, actions=self.preprocess(read_from_queue(output_queue)),
-                                               chunk_size=250, request_timeout=60):
-                if not success:
-                    print("Insert failed: ", info)
-        except ElasticsearchException:
-            print("NEVYDALO :(")
-            self.__call__()
+        while not shutdown:
+            try:
+                for success, info in parallel_bulk(client=self.esx, actions=self.preprocess(read_from_queue(output_queue)),
+                                                   chunk_size=250, request_timeout=60):
+                    if not success:
+                        print("Insert failed: ", info)
+            except ElasticsearchException as e:
+                print("NEVYDALO :(")
+                print(e)
+        self.__del__()
+
+    def __del__(self):
+        with open("entity_counts" + str(int(time.time())) + ".json", "w") as f:
+            json.dump(self.counts, f)
 
     def preprocess(self, iterator):
         for i in iterator:
+            try:
+                self.counts[i['page_to_entity']] += 1
+            except KeyError:
+                self.counts[i['page_to_entity']] = 1
             yield self.create_action(**i)
 
     @staticmethod
@@ -148,13 +161,15 @@ class Aggregator:
         super().__init__()
         self.provider = provider
         self.output = output
-        self.nlp = NLP(NameProvider("/home/martin/Dokumenty/skola/vi/gn_csv/mena.csv"),
-                       TownProvider("/home/martin/Dokumenty/skola/vi/gn_csv/GNKU.csv"),
-                       GeoProvider("/home/martin/Dokumenty/skola/vi/gn_csv/geograficky_nazov.csv"))
+        self.nlp = NLP(NameProvider("gn_csv/mena.csv"),
+                       TownProvider("gn_csv/GNKU.csv"),
+                       GeoProvider("gn_csv/geograficky_nazov.csv"))
         self.cache = Cache(100000, output)
 
     def __call__(self):
         for i in self.provider:
+            if i["page_to"] is None:
+                continue
             if i["page_to"] not in self.cache:
                 self.cache[i["page_to"]] = {
                     "page_to": i["page_to"],
@@ -215,15 +230,19 @@ if __name__ == "__main__":
     for _ in range(2):
         process = Process(target=process_article)
         process.start()
+        psproc = psutil.Process(process.pid)
+        psproc.nice(12)
         processes.append(process)
     # for _ in range(14):
     #     process = Process(target=write_out)
     #     process.start()
     aggregators = []
-    for _ in range(13):
+    for _ in range(10):
         aggregator = Aggregator(provider=read_from_queue(anchor_queue), output=output_queue.put)
         agg_thread = Process(target=aggregator)
         agg_thread.start()
+        psproc = psutil.Process(agg_thread.pid)
+        psproc.nice(12)
         aggregators.append(agg_thread)
     writer = ESWriter(output_queue)
     write_thread = Thread(target=writer)
