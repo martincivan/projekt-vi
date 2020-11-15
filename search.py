@@ -78,7 +78,7 @@ def entity_search(off, size, q):
 
 while True:
     actions = [{"name": "General fulltext search", "value": lambda: execute(lambda: input("Query: "), fulltext_search)},
-               {"name": "With entity", "value": lambda: execute(select_entity, entity_search)},
+               {"name": "By entity type", "value": lambda: execute(select_entity, entity_search)},
                {"name": "Quit", "value": quit}]
     answers = prompt([{"type": "list", "name": "type", "message": "Select search type", "choices": actions}])
     answers["type"]()
