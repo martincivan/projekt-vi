@@ -26,6 +26,25 @@ INDEX = "vi_index_to"
 logging.getLogger().setLevel(logging.WARN)
 
 mapping = {
+    "settings": {
+        "analysis": {
+            "analyzer": {
+                "standard_asciifolding": {
+                    "tokenizer": "standard",
+                    "filter": [
+                        "lowercase",
+                        "my_ascii_folding"
+                    ]
+                }
+            },
+            "filter": {
+                "my_ascii_folding": {
+                    "type": "asciifolding",
+                    "preserve_original": True
+                }
+            }
+        }
+    },
     "mappings": {
         "properties": {
             "page_to": {
@@ -38,7 +57,8 @@ mapping = {
                 "properties": {
                     "anchor_text": {
                         "type": "text",
-                        "term_vector": "with_positions"
+                        "term_vector": "with_positions",
+                        "analyzer": "standard_asciifolding"
                     },
                     "page_from": {
                         "type": "keyword"

@@ -22,7 +22,7 @@ def print_meta(es_result):
 
 def print_hits(hits):
     for hit in hits:
-        print(f'{hit["_source"]["page_to"].replace("_", " ")} [{hit["_source"]["page_to_entity"]}]')
+        print(f'{hit["_source"]["page_to"]} [{hit["_source"]["page_to_entity"]}]')
         c = Counter(f'    {a["anchor_text"]}: ({a["page_from"]})' for a in hit["_source"]["anchors"])
         for a in c:
             print(f'{a} [{c[a]}]')
@@ -30,8 +30,9 @@ def print_hits(hits):
 
 def fulltext_search(off, size, q):
     return es.search({"query": {
-        "simple_query_string": {
+        "query_string": {
             "query": q,
+            "default_operator": "AND"
         }
     }, "size": size, "from": off})
 
@@ -65,14 +66,15 @@ def select_entity():
         }
     })
     entities = [{"name": f'{i["key"]} [{i["doc_count"]}]', "value": i["key"]} for i in es_result["aggregations"]["entities"]["buckets"]]
-    return prompt([{"type": "list", "name": "entity", "message": "Select search type", "choices": entities}])["entity"]
+    return (prompt([{"type": "list", "name": "entity", "message": "Select search type", "choices": entities}])["entity"], input("Query: "))
 
 
 def entity_search(off, size, q):
     return es.search({"query": {
-        "match": {
-            "page_to_entity": q
-        }
+        "query_string": {
+            "query": f"page_to_entity:{q[0]} AND {q[1]}",
+            "default_operator": "AND"
+        },
     }, "size": size, "from": off})
 
 
