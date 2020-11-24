@@ -70,13 +70,29 @@ def select_entity():
 
 
 def entity_search(off, size, q):
-    return es.search({"query": {
-        "query_string": {
-            "query": f"page_to_entity:{q[0]} AND {q[1]}",
-            "default_operator": "AND"
-        },
-    }, "size": size, "from": off})
-
+    if q[1]:
+        return es.search({"query": {
+            "bool": {
+                "must": {
+                    "query_string": {
+                        "query": q[1],
+                        "default_operator": "AND"
+                    }
+                },
+                "filter": {
+                    "match": {
+                        "page_to_entity": q[0]
+                    }
+                }
+            }
+            ,
+        }, "size": size, "from": off})
+    else:
+        return es.search({"query": {
+            "match": {
+                "page_to_entity": q[0]
+            }
+        }, "size": size, "from": off})
 
 while True:
     actions = [{"name": "General fulltext search", "value": lambda: execute(lambda: input("Query: "), fulltext_search)},

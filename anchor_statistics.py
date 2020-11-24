@@ -17,7 +17,7 @@ from elasticsearch.helpers import parallel_bulk
 from nlp import NLP, TownProvider, GeoProvider, Cache, NameProvider
 from reader import WikiReader
 
-INDEX = "vi_index_to"
+INDEX = "vi_index_to2"
 
 
 # TODO: offline statistiky vyskytov entit
@@ -128,7 +128,7 @@ class ESWriter:
         self.counts = {}
 
     def __call__(self):
-        while not shutdown:
+        while not shutdown or not output_queue.empty():
             try:
                 for success, info in parallel_bulk(client=self.esx, actions=self.preprocess(read_from_queue(output_queue)),
                                                    chunk_size=250, request_timeout=60):
@@ -202,13 +202,14 @@ class Aggregator:
 
 
 def display():
-    while not shutdown:
-        logging.warning("Queue sizes: articles={0} anchors={1} output={2}. Read: {3}".format(
+    while not shutdown or not output_queue.empty() or not article_queue.empty() or not anchor_queue.empty():
+        logging.warning("Queue sizes {4}: articles={0} anchors={1} output={2}. Read: {3}".format(
             article_queue.qsize(),
             anchor_queue.qsize(),
             output_queue.qsize(),
-            reader.status_count))
+            reader.status_count, shutdown))
         time.sleep(1)
+    print("HOTOVO: " + str(shutdown))
 
 
 def read_from_queue(queue):
@@ -257,7 +258,7 @@ if __name__ == "__main__":
     #     process = Process(target=write_out)
     #     process.start()
     aggregators = []
-    for _ in range(10):
+    for _ in range(6):
         aggregator = Aggregator(provider=read_from_queue(anchor_queue), output=output_queue.put)
         agg_thread = Process(target=aggregator)
         agg_thread.start()

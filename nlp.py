@@ -65,9 +65,9 @@ class TownProvider:
         return value in self.values
 
     def listcheck(self, values):
-        for value in self.values:
-            if any(v in value for v in values):
-                return True
+        # for value in self.values:
+        #     if any(v in value for v in values):
+        #         return True
         return False
 
 
@@ -96,9 +96,9 @@ class GeoProvider:
             return None
 
     def listcheck(self, values: list):
-        for value in values:
-            if value in self.values.keys():
-                return self.values[value]
+        # for value in values:
+        #     if value in self.values.keys():
+        #         return self.values[value]
         return None
 
 
