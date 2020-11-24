@@ -67,35 +67,79 @@ def select_entity():
     })
     entities = [{"name": f'{i["key"]} [{i["doc_count"]}]', "value": i["key"]} for i in
                 es_result["aggregations"]["entities"]["buckets"]]
+
+    es_result = es.count({
+        "query": {
+            "bool": {
+                "must_not": {
+                    "exists": {
+                        "field": "page_to_entity"
+                    }
+                }
+            }
+        }
+    })
+
+    entities.append({"name": f'none [{es_result["count"]}]', "value": "none"})
     return (
         prompt([{"type": "list", "name": "entity", "message": "Select search type", "choices": entities}])["entity"],
         input("Query: "))
 
 
 def entity_search(off, size, q):
-    if q[1]:
-        return es.search({"query": {
-            "bool": {
-                "must": {
-                    "query_string": {
-                        "query": q[1],
-                        "default_operator": "AND"
-                    }
-                },
-                "filter": {
-                    "match": {
-                        "page_to_entity": q[0]
+    if q[0] == "none":
+        if q[1]:
+            return es.search({"query": {
+                "bool": {
+                    "must": {
+                        "query_string": {
+                            "query": q[1],
+                            "default_operator": "AND"
+                        }
+                    },
+                    "must_not": {
+                        "exists": {
+                            "field": "page_to_entity"
+                        }
                     }
                 }
-            }
-            ,
-        }, "size": size, "from": off})
+                ,
+            }, "size": size, "from": off})
+        else:
+            return es.search({
+                "query": {
+                    "bool": {
+                        "must_not":{
+                            "exists": {
+                                "field": "page_to_entity"
+                            }
+                        }
+                    }
+            }, "size": size, "from": off}, index=INDEX)
     else:
-        return es.search({"query": {
-            "match": {
-                "page_to_entity": q[0]
-            }
-        }, "size": size, "from": off})
+        if q[1]:
+            return es.search({"query": {
+                "bool": {
+                    "must": {
+                        "query_string": {
+                            "query": q[1],
+                            "default_operator": "AND"
+                        }
+                    },
+                    "filter": {
+                        "match": {
+                            "page_to_entity": q[0]
+                        }
+                    }
+                }
+                ,
+            }, "size": size, "from": off})
+        else:
+            return es.search({"query": {
+                "match": {
+                    "page_to_entity": q[0]
+                }
+            }, "size": size, "from": off})
 
 
 while True:

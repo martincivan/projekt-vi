@@ -19,10 +19,6 @@ from reader import WikiReader
 
 INDEX = "vi_index_to2"
 
-
-# TODO: offline statistiky vyskytov entit
-
-
 logging.getLogger().setLevel(logging.WARN)
 
 mapping = {
@@ -62,23 +58,7 @@ mapping = {
                     },
                     "page_from": {
                         "type": "keyword"
-                    },
-                    # "entities": {
-                    #     "properties": {
-                    #         "text": {
-                    #             "type": "keyword"
-                    #         },
-                    #         "start": {
-                    #             "type": "short"
-                    #         },
-                    #         "end": {
-                    #             "type": "short"
-                    #         },
-                    #         "label": {
-                    #             "type": "keyword"
-                    #         }
-                    #     }
-                    # }
+                    }
                 }
             }
         }
@@ -133,7 +113,7 @@ class ESWriter:
         self.counts = {}
 
     def __call__(self):
-        while not shutdown or not output_queue.empty():
+        while not shutdown or not output_queue.empty() or not article_queue.empty() or not anchor_queue.empty():
             try:
                 for success, info in parallel_bulk(client=self.esx, actions=self.preprocess(read_from_queue(output_queue)),
                                                    chunk_size=250, request_timeout=60):
@@ -208,17 +188,17 @@ class Aggregator:
 
 def display():
     while not shutdown or not output_queue.empty() or not article_queue.empty() or not anchor_queue.empty():
-        logging.warning("Queue sizes {4}: articles={0} anchors={1} output={2}. Read: {3}".format(
+        print("Queue sizes {4}: articles={0} anchors={1} output={2}. Read: {3}".format(
             article_queue.qsize(),
             anchor_queue.qsize(),
             output_queue.qsize(),
             reader.status_count, shutdown))
         time.sleep(1)
-    print("HOTOVO: " + str(shutdown))
+    print("Done: " + str(shutdown))
 
 
 def read_from_queue(queue):
-    while not shutdown or not queue.empty():
+    while not shutdown or not output_queue.empty() or not article_queue.empty() or not anchor_queue.empty():
         try:
             yield queue.get(timeout=1)
         except EOFError:
@@ -243,9 +223,9 @@ if __name__ == "__main__":
     # out_file = open(os.path.join(args.out), "w+")
 
     manager = multiprocessing.Manager()
-    output_queue = manager.Queue(maxsize=2000)
-    article_queue = manager.Queue(maxsize=2000)
-    anchor_queue = manager.Queue(maxsize=2000)
+    output_queue = manager.Queue(maxsize=5000)
+    article_queue = manager.Queue(maxsize=5000)
+    anchor_queue = manager.Queue(maxsize=5000)
 
     reader = WikiReader(lambda ns: ns == 0, article_queue.put)
 
@@ -253,7 +233,7 @@ if __name__ == "__main__":
     status.start()
 
     processes = []
-    for _ in range(2):
+    for _ in range(6):
         process = Process(target=process_article)
         process.start()
         psproc = psutil.Process(process.pid)
@@ -263,7 +243,7 @@ if __name__ == "__main__":
     #     process = Process(target=write_out)
     #     process.start()
     aggregators = []
-    for _ in range(6):
+    for _ in range(8):
         aggregator = Aggregator(provider=read_from_queue(anchor_queue), output=output_queue.put)
         agg_thread = Process(target=aggregator)
         agg_thread.start()
