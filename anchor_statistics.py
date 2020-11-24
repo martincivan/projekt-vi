@@ -98,6 +98,13 @@ def get_anchors(source: str):
         yield match.group(1)
 
 
+def process_anchor(anchor):
+    anchor = anchor.split("|")
+    link_to = anchor[0]
+    anchor_text = anchor[1] if len(anchor) == 2 else link_to
+    return anchor_text, link_to
+
+
 class ArticleProcessor:
 
     def __init__(self, provider, output) -> None:
@@ -108,9 +115,7 @@ class ArticleProcessor:
     def __call__(self):
         for page_title, source in self.provider:
             for anchor in get_anchors(source=source):
-                anchor = anchor.split("|")
-                link_to = anchor[0]
-                anchor_text = anchor[1] if len(anchor) == 2 else link_to
+                anchor_text, link_to = process_anchor(anchor)
                 if link_to is not None and len(link_to) > 0:
                     self.output({
                         "page_from": page_title,

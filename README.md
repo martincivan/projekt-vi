@@ -13,7 +13,7 @@ Naindexovanie a vytvorenie offline štatistík dát sa sputí skriptom `anchor_s
 priklad: `python anchor_statistics.py /home/martin/fiit/vi/skwiki-latest-pages-articles.xml.bz2`
 
 Dopyty sa vykonávajú skriptom `search.py`
-
+Testy sa púšťajú skriptom `test.py`
 
 ## Popis dat
 Na začiatok by som chcel použiť slovenskú wikipediu, po odladení projektu može byť použitý aj na anglickú. https://dumps.wikimedia.org/skwiki/latest/
@@ -59,23 +59,25 @@ Tú číta jedno vlákno, ktoré skladá dopyty do ElasticSearch a počíta offl
 Štruktúra dokumentu v ES indexe:
 
 ```json
-"page_to": {
-    "type": "keyword"
-},
-"page_to_entity": {
-    "type": "keyword"
-},
-"anchors": {
-    "properties": {
-        "anchor_text": {
-            "type": "text",
-            "term_vector": "with_positions"
-        },
-        "page_from": {
-            "type": "keyword"
-        }
+{
+    "page_to": {
+        "type": "keyword"
     },
-}       
+    "page_to_entity": {
+        "type": "keyword"
+    },
+    "anchors": {
+        "properties": {
+            "anchor_text": {
+                "type": "text",
+                "term_vector": "with_positions"
+            },
+            "page_from": {
+                "type": "keyword"
+            }
+        }
+    }       
+}
 ```
 
 príklad:
@@ -94,8 +96,10 @@ príklad:
     ],
     "page_to_entity" : "dolina"
   }
-},
+}
 ```
+
+Offline štatistiky sa vytvoria do súboru `entity_counts<timestamp>.json`.
 
 ## NLP
 Hľadanie entít funguje na princípe hľadania zhody v slovníkoch. 
@@ -107,3 +111,4 @@ Ako slovníky slúžia:
 Hľadanie prebieha najprv postupne pre úplnú zhodu, potom neskôr pre zhodu po jednotlivých slovách.
 Mená sa hľadajú len pre 2-5 slovné spojenia.
 
+Výsledky hľadania sa odkladajú do cache s maximálnou veľkosťou, ktorá po naplnení zahadzuje náhodné prvky.

@@ -4,7 +4,7 @@ from PyInquirer import prompt
 
 from elasticsearch import Elasticsearch
 
-INDEX = "vi_index_to"
+INDEX = "vi_index_to2"
 
 print("Wanchor!!!")
 
@@ -59,14 +59,17 @@ def select_entity():
         "aggs": {
             "entities": {
                 "terms": {
-                    "field": "page_to_entity"
-                    # "size": 500
+                    "field": "page_to_entity",
+                    "size": 500
                 }
             }
         }
     })
-    entities = [{"name": f'{i["key"]} [{i["doc_count"]}]', "value": i["key"]} for i in es_result["aggregations"]["entities"]["buckets"]]
-    return (prompt([{"type": "list", "name": "entity", "message": "Select search type", "choices": entities}])["entity"], input("Query: "))
+    entities = [{"name": f'{i["key"]} [{i["doc_count"]}]', "value": i["key"]} for i in
+                es_result["aggregations"]["entities"]["buckets"]]
+    return (
+        prompt([{"type": "list", "name": "entity", "message": "Select search type", "choices": entities}])["entity"],
+        input("Query: "))
 
 
 def entity_search(off, size, q):
@@ -93,6 +96,7 @@ def entity_search(off, size, q):
                 "page_to_entity": q[0]
             }
         }, "size": size, "from": off})
+
 
 while True:
     actions = [{"name": "General fulltext search", "value": lambda: execute(lambda: input("Query: "), fulltext_search)},
