@@ -1,124 +1,323 @@
-import logging
+import unittest
+from unittest import TestCase
 
-from regex import regex
+from anchor_statistics import get_anchors, process_anchor
 
-text = '''{{Infobox Osobnosť
- | Meno               = Isaac Newton
- | Rodné meno         = 
- | Popis osoby        = anglický fyzik, matematik a filozof
- | Portrét            = GodfreyKneller-IsaacNewton-1689.jpg
- | Veľkosť portrétu   = 
- | Popis portrétu     = 
- | Dátum narodenia    = [[4. január]] [[1643]]
- | Miesto narodenia   = [[Woolsthorpe-by-Colsterworth]], [[Linc[[oln]]shire (grófstvo)|Lincolnshire]], [[Anglicko]]
- | Dátum úmrtia       = {{duv|1727|3|31|1643|1|4}}
- | Miesto úmrtia      = [[Londýn|Kensington]], [[Anglicko]]
- | Bydlisko           = 
- | Iné mená           = 
- | Štát pôsobenia     = 
- | Národnosť          = 
- | Štátna príslušnosť = 
- | Zamestnanie        = 
- | Známy vďaka        = 
- | Alma mater         = 
- | Profesia           = 
- | Aktívne roky       = <!-- [[1900]]{{--}}[[1900]] -->
- | Rodičia            = 
- | Príbuzní           = 
- | Súrodenci          = 
- | Manželka           = 
- | Partnerka          = 
- | Deti               = 
- | Podpis             = Isaac Newton signature.svg
+text = '''
 
- | Webstránka         = 
- | Poznámky           = 
- | Portál1            = Matematika
- | Portál2            = Fyzika
- | Portál3            = Astronómia
+{{Infobox Programovací jazyk
+| Logo = Python logo and wordmark.svg
+| Názov = Python
+| Dátum vzniku = Február 1989
+| Druh = objektový
+| Interpretovaný = áno
+| Typová kontrola = stredná
+| Tvorca = [[Guido van Rossum]]
+| Prípony = .py, .pyc, .pyd
+| Dialekty = [[Jython]], [[Iron Python]]
+| Použitie = Všetky platformy
 }}
 
-Sir Isaac Newton, prezident [[Kráľovská spoločnosť|Kráľovskej spoločnosti]] (* [[4. január]] [[1643]], [[Woolsthorpe-by-Colsterworth]], [[Anglicko]] – † [[31. marec]] [[1727]], [[Londýn|Kensington]],) bol anglický [[fyzik]], [[matematik]] a [[filozof]].
+[[Súbor:Python script.svg|right|thumb|Ukážka kódu v Pythone]]
 
-Založil [[Diferenciálny [[a integrálny počet]]|infinitezimálny počet]] a formuloval prvú teóriu sily a gravitácie. Jeho objavy v [[matematika|matematike]], [[optika (odbor)|optike]] a [[mechanika|mechanike]] položili základy pre modernú [[fyzika|fyziku]].
+Python je [[Interpreter (programovanie)|interpretovaný]], interaktívny [[programovací jazyk]], ktorý vytvoril [[Guido van Rossum]], pôvodne ako skriptovací jazyk pre [[Amoeba OS]] schopný [[Systémové volanie|systémových volaní]]. Python je často porovnávaný s jazykmi [[Tcl]], [[Perl]], [[Scheme]], [[Java (programovací jazyk)|Java]] a [[Ruby (programovací jazyk)|Ruby]]. Python je vyvíjaný ako [[open source]] projekt, a je v súčasnosti pri verzii 3.8.3.
 
-Je jednou z najväčších postáv v dejinách ľudského poznania a od neho sa vlastne počíta [[fyzika]] ako novodobá [[veda]]. Newton nadviazal na výsledky svojich predchodcov – [[Galileo Galilei|Galileiho]], [[Johannes Kepler|Keplera]], [[René Descartes|Descarta]] a ďalších. Presne sformuloval základné zákony [[Mechanika|mechanického pohybu]], dal im podobu [[Rovnica (matematika)|matematických rovníc]] a vytvoril [[diferenciálny a integrálny počet]], pomocou ktorého vieme tieto rovnice riešiť. Až od čias Newtona sa stalo možným vypočítať [[mechanický pohyb|pohyby]] [[planéta|planét]], predpovedať presné termíny [[zatmenie Slnka|zatmenia Slnka]] a [[Zatmenie Mesiaca|Mesiaca]], čas návratu periodických planét (hlavne známej [[Halleyho kométa|Halleyovej kométy]]), a dokonca vypočítať i polohu a pohyb doteraz neznámych telies. Tak bola v minulom storočí predpovedaná existencia niektorých planétok a novej planéty [[Neptún]]a, ktoré potom hvezdári na oblohe skutočne našli. Newtonov [[gravitačný zákon]] umožnil určiť hmotnosť [[Nebeské teleso|nebeských telies]] a sily pôsobiace medzi nimi, odvážiť [[zem]]eguľu. Newton dokázal, že nie je rozdiel medzi zákonmi pozemských a nebeských pohybov, ako sa domnieval [[Aristoteles]], ale že sila, ktorá spôsobuje pohyb planét okolo [[Slnko|Slnka]] je tá istá, ako sila, ktorá spôsobuje, že padáme zo schodov.
+== Charakteristika ==
+Python je multi-paradigmový jazyk podobne ako [[Perl]], na rozdiel od [[Smalltalk]]u alebo [[Haskell]]u. To znamená, že namiesto toho aby nútil programátora používať určitý štýl programovania, umožňuje použivanie viacerých. Python podporuje objektovo orientované, štruktúrované aj funkcionálne programovanie. Je to dynamicky typový jazyk, podporuje veľké množstvo vysokoúrovňových dátových typov a na správu pamäte používa garbage collection.
 
-Newton sa ako skutočný [[vedec]] pridržiaval len pozorovaných [[fakt]]ov a výsledkov [[pokus|experiment]]ov a nepúšťal sa do nepodložených špekulácií. Vedel, že ešte nemôže vysvetliť príčiny a podstatu [[gravitácia|gravitácie]] a vyhlasoval, že hypotézy si nevymýšľa. Bol si pritom vedomý, do akej miery vďačí za svoje výsledky svojim predchodcom a napísal, že ak videl ďalej ako ostatní, bolo to preto, že stál na ramenách obrov.<ref>''stáť na ramenách obrov'' je [[metafora]] a znamená "používať infomácie získané od bývalých veľkých mysliteľov, za účelom intelektuálneho progresu" [http://www.phrases.org.uk/meanings/268025.html]</ref> Zároveň si uvedomoval, že čím viac [[veda|vedu]] poznáva, tým viac sa rozširujú aj obzory nepoznaného a prirovnával sa k malému chlapcovi, ktorý sa len hrá s peknými kamienkami a mušličkami na brehu nekonečného oceánu poznania. V Newtonových súčasníkoch vzbudzovali jeho objavy obdiv a nadšenie. Zdalo sa im, ako keby príroda náhle odhalila svoje tajomstvá a všetko sa stalo jasným. Svedčia o tom verše dobového [[básnik]]a [[Alexander Pope|Alexandra Popea]]: ''Poriadok prírody bol dlho tmou noci zastrený. Boh povedal: Buď Newton! A deň zažiari jasný.''
+Aj keď sa Python často označuje ako "skriptovací jazyk", používa sa na vývoj mnohých veľkých softvérových projektov ako sú aplikačný server [[Zope]] a systémy na zdieľanie súborov [[Mnet]] a [[BitTorrent]]. Tak isto ho široko využíva [[Google]]. Zástanci Pythónu ho radšej volajú vysokoúrovňovým dynamickým programovacím jazykom, lebo pojem "skriptovací jazyk" sa asociuje s jazykmi, ktoré sa používajú len na jednoduché shell skripty alebo s jazykmi ako [[JavaScript]]: jednoduchšími a na väčšinu účelov menej spôsobilými ako "skutočné" programovacie jazyky ako Python.
 
-Až nasledujúci vývoj ukázal, ako veľa ešte nepoznáme a o koľko je svet zložitejší, bohatší a zaujímavejší, než mohol tušiť Newton a jeho súčasníci. Napriek oprávnenej sláve, ktorou je Newtonovo meno obostreté, nebol on sám ako človek bez ľudských nedostatkov a jeho život, ktorý prebiehal v nepokojných časoch [[Dejiny Spojeného kráľovstva|anglickej histórie]], sa neobišiel bez výkyvov. Newton mal obdobie, kedy sa dokázal hlboko sústrediť a plodiť jeden geniálny [[objav]] za druhým a pritom, ako to u vedcov býva, sa nestaral o svoje okolie, ani o [[životospráva|životosprávu]] a telesne a duševne sa vyčerpával. Potom sa zase dlhé roky vedeckej práci nevenoval, vyžíval sa v osobných a prestížnych sporoch, zaoberal sa pochybnými činnosťami v oblasti [[alchýmia|alchýmie]], hľadaním [[kameň mudrcov|kameňa mudrcov]], [[Mytológia (veda)|mytologickými]] [[letopočet|letopočtami]], a dokonca prežíval aj roky vyslovene duševných kríz a porúch.
+Ďalšou dôležitou vlastnosťou Pythonu je to, že sa dá jednoducho rozširovať. Nové zabudované moduly môžu byť jednoducho napísané v [[C (programovací jazyk)|C]] alebo [[C Plus Plus|C++]]. Python tiež môže byť použitý ako rozširovací jazyk pre existujúce moduly a aplikácie, ktoré potrebujú programovateľné rozhranie.
 
-== Životopis ==
-[[File:Woolsthorpe-manor.jpg|thumb|Miesto narodenia Isaaca Newtona]]
-Narodil sa na samote Woolsthorpe v [[Lincolnshire (grófstvo)|Lincolnskom grófstve]] na severovýchod od [[Londýn]]a, podľa starého [[Juliánsky kalendár|juliánskeho kalendára]], ktorý vtedy v [[Anglicko|Anglicku]] platil, na [[Vianoce]] v roku [[1642]]. Otec mu zomrel ešte pred narodením, matka sa druhýkrát vydala a o malého chlapca sa väčšinou starala stará matka. Newton bol ako chlapec samotár a často chorý a nič nenasvedčovalo tomu, že je mimoriadne nadaný. Bol ale zručný, konštruoval pre svoje potešenie slnečné a vodné hodiny, vodné mlynčeky a rôzne mechanické hračky, brúsil sklenené [[Šošovka (optika)|šošovky]] a robil [[chémia|chemické]] pokusy. Do školy chodil najprv vo svojej rodnej dedine a potom do neďalekého Granthamu, kde býval v rodine lekárnika Clarka. Tu získal prístup k rozsiahlej [[knižnica|knižnici]], rýchlo začal ovládať klasické [[Jazyk (jazykoveda)|jazyky]] a zoznámil sa napríklad s [[Euklidovská geometria|Euklidovými základmi geometrie]]. V Granthame prežil Newton aj svoju mladícku lásku so slečnou Storeyovou, ktorej sľúbil manželstvo. Nakoniec sa však Newton oddal [[univerzita|univerzitnej]] dráhe a zostal po celý život slobodný.
+Aj keď návrhár Pythonu je trochu nepriateľský k funkcionálnemu programovaniu a k tradícii Lispu, sú tu viditeľné paralely medzi filozofiou Pythonu a filozofiou minimalistických jazykov Lispovej rodiny ako sú [[Scheme]]. Kvôli tomu veľa bývalých programátorov v [[Lisp]]e považujú Python za príťažlivý {{bez citácie}}.
 
-[[Súbor:NewtonsTelescopeReplica.jpg|náhľad|Replika [[Newtonov ďalekohľad|Newtonovho ďalekohľadu]] z roku [[1672]] pre [[Kráľovská spoločnosť|Kráľovskú spoločnosť]]]]
-V roku [[1661]] odišiel študovať na Trinity College v [[Cambridge (Cambridgeshire)|Cambridgei]], kde bol jeho učiteľom výborný [[matematik]] a [[fyzik]] [[Isaac Barrow]]. Newtonove štúdiá na univerzite prerušila [[Čierna smrť|morová epidémia]] v rokoch [[1665]]{{--}}[[1667]]. Newton sa vrátil do rodnej dediny a premýšľal tu nad svojimi budúcimi [[objav]]mi. Podľa známej legendy mu vtedy vraj na hlavu spadlo [[jablko]], ktoré ho priviedlo na myšlienku o [[gravitácia|zemskej príťažlivosti]]. Po návrate do Cambridgea ukončil Newton štúdium a prevzal katedru [[geometria|geometrie]] po svojom učiteľovi Barrowovi. Počas ďalších rokov sa usilovne venoval vedeckej práci. Jej prvým výsledkom bola konštrukcia zrkadlového [[ďalekohľad]]u (pozri ''[[Newtonov ďalekohľad]]''), ktorý nemá [[Optika (odbor)|optické]] nedostatky spôsobené [[Šošovka (optika)|šošovkami]]. Vo svojej práci o optike z roku [[1672]] Newton ukázal, že biele [[Viditeľné svetlo|svetlo]] je možné zložiť z farebných spektrálnych [[Svetelný lúč|lúčov]] a vysvetlil zákonitosti dúhových [[Farba (fyzika)|farieb]]. Jeho najvýznamnejšie dielo ''Principia mathematica philosophiae naturalis'' ([[1687]]), Matematické základy prírodnej [[filozofia|filozofie]], vyšlo v roku [[1687]] na naliehanie a za materiálnej pomoci známeho [[astronóm]]a [[Edmund Halley|Edmunda Halleyho]]. Newton v ňom formuloval svoje tri známe [[newtonove pohybové zákony|pohybové zákony]] – [[zákon zotrvačnosti]], [[zákon sily]] a [[zákon akcie a reakcie]]. Podľa týchto zákonov [[sila]] nie je príčinou [[Mechanický pohyb|pohybu]], ale zmeny pohybu. Ak nebude na teleso pôsobiť žiadna sila, bude teleso v pokoji, alebo sa bude samo pohybovať rovnomerným, priamočiarym pohybom. Newton tu tiež uvádza [[gravitačný zákon]], podľa ktorého príťažlivá sila medzi dvoma hmotnými bodmi alebo guľovými telesami sa mení nepriamo úmerne štvorcu vzdialenosti medzi ich stredmi. Na Newtonovu počesť bola pomenovaná jednotka sily, newton.
+Názov jazyka vôbec nevznikol z názvu druhu hada. Autor nazval jazyk podľa populárneho britského satirického seriálu [[Monty Python’s Flying Circus]]. Ale napriek tomu sa názov jazyka často asociuje práve s hadom a nie so seriálom.
 
-[[Súbor:Isaac Newton grave in Westminster Abbey.jpg|náhľad|Newtonov hrob vo [[Westminsterské opátstvo|Westminsterskom opátstve]]]]
-Newton žil osamelo, nikam necestoval, mal len málo priateľov a veľkú nechuť k publikovaniu a verejnému vystupovaniu. Jeho [[Prednáška|prednášky]] na [[univerzita|univerzite]] neboli príliš zaujímavé, lebo v nich [[detail]]ne popisoval svoje [[pokus|experiment]]y a [[Žiak (škola)|študenti]] na ne veľmi nechodili. Viedol vleklé spory o pôvodnosti svojich prác s [[Nemecko|nemeckým]] matematikom [[Gottfried Wilhelm Leibniz|Gottfriedom Leibnizom]] ([[1646]]{{--}}[[1716]]), [[Anglicko|anglickým]] fyzikom [[Robert Hooke|Robertom Hookom]] ([[1635]]{{--}}[[1703]]), objaviteľom zákona pružných síl a s ďalšími. Napriek svojej ostýchavosti sa Newton angažoval aj vo verejnom živote a bol dvakrát zvolený za člena [[parlament]]u. Jeho život sa zmenil po odchode z Cambridgea v roku [[1696]] do [[Londýn]]a, kde mu viedla domácnosť jeho pôvabná a duchaplná neter Bartonová. Páčila sa i Charlesovi Montagueovi, ktorý ako lord Halifax zastával významné politické postavenie a vymohol Newtonovi výnosné miesto správcu kráľovskej mincovne. Newton si plnil svoje úradné povinnosti veľmi svedomito a poslal na popravisko 20 odhalených peňazokazov. Jeho spoločenská prestíž stále rástla, v roku [[1703]] sa stal prezidentom vedeckej [[Kráľovská spoločnosť|Londýnskej kráľovskej spoločnosti]], v roku [[1705]] bol povýšený do šľachtického stavu. Newton zomrel v Kensingtone, ktorý je dnes súčasťou [[Londýn]]a a bol pochovaný s najvyššími poctami vo [[Westminsterské opátstvo|Westminsterskom opátstve]].
+== Dátové typy a štruktúry ==
+Python podporuje základné dátové typy, ako celé čísla a čísla s pohyblivou desatinnou čiarkou, ale podporuje aj celé čísla neobmedzenej dĺžky a komplexné čísla.
 
-Známe sú jeho [[newtonove pohybové zákony|pohybové zákony]]:
-# [[Zákon zotrvačnosti]]: Každé hmotné teleso v inerciálnej súradnicovej sústave zotrváva v relatívnom pokoji alebo v rovnomernom priamočiarom pohybe, pokiaľ nie je nútené pôsobením sily tento stav zmeniť.
-# [[Zákon sily]]: V inerciálnej vzťažnej sústave je veľkosť sily pôsobiacej na hmotný bod určená hodnotou derivácie hybnosti tohto hmotného bodu podľa času, pričom zmena hybnosti má smer rovnobežný s pôsobiacou silou.
-# [[Zákon akcie a reakcie]]: Sily, ktorými na seba pôsobia každé dve telesá vo vzájomnej interakcii, sú rovnako veľké, opačného smeru a súčasne vznikajú a zanikajú.
+Taktiež podporuje bežné operácie s reťazcami s jednou výnimkou: reťazce sú v Pythone nemenným typom, takže operácie, ktoré by inak menili reťazec (napríklad zámena znakov), namiesto toho vracajú nový reťazec.
 
-== Diela ==
-{{Gutenberg autor|id=Isaac+Newton|meno=Isaac Newton}}
-* ''Teória svetla a farieb'' – [[1672]]
-* ''Teória svetla a farieb, obsahujúca hypotézu vysvetľujúcu vlastnosti svetla, ktorú autor vyložil v predchádzajúcich spisoch, ako aj opis najdôležitejších javov rozličných farieb jemných vrstiev a mydlových bubliniek, ktoré tak isto závisia od skôr charakterizovaných vlastností svetla'' – [[1675]]
-* ''O pohybe'' (rukopis) – [[1684]]
-* ''Matematické princípy prírodnej filozofie'' – [[1687]], [[1713]]
-* ''Pravidlá filozofovania'' (Pravidlá usudzovania vo fyzike)
-* ''Nová teória svetla a farieb'' – [[1704]] ?
-* ''Optika'' (latinské doplnené vydanie) – [[1705]], 2. anglické [[1717]], ďalšie [[1721]], [[1730]] [http://books.google.com/books?id=XXu4AkRVBBoC&printsec=frontcover&dq=newton&as_brr=1&hl=sk#PPP9,M1]
+V Pythone premenné nemajú typ, majú iba hodnoty. Teda Python je dynamicky typový jazyk na rozdiel od [[Java (programovací jazyk)|Java]] a [[C (programovací jazyk)|C]]. Všetky hodnoty sa odovzdávajú odkazom a nie hodnotou.
 
-== Poznámky ==
-<references />
+Medzi dynamicky typovými jazykmi má Python stredne prísnu typovú kontrolu. Implicitné konverzie sú definované pre číselné typy, takže môžeme napríklad vynásobiť komplexné číslo celým bez explicitného pretypovania. Ale nie je tu implicitná konverzia medzi číslami a reťazcami.
 
-== Pozri aj ==
-* [[Newtonove pohybové zákony]]
-* [[Diferenciálny a integrálny počet]]
-* [[Gravitačný zákon]]
-* [[Newtonov ďalekohľad]]
-* [[Dejiny fyziky]]
+=== Kolekcie ===
+Jedným z fundamentálnych aspektov Pythonu je koncept kolekčných (alebo kontajnerových) typov. Vo všeobecnosti kolekcia je objekt, ktorý obsahuje iné objekty tak, že k nim môžeme pristupovať pomocou indexov alebo kľúčov. Kolekcie majú dve základné formy: mapované typy a sekvenčné typy.
 
-== Iné projekty ==
-{{Projekt|q=Isaac Newton|commonscat=Isaac Newton|wikisource=Author:Isaac Newton|wikisource_štítok=Isaac Newton (v angličtine)}}
+Mapované typy sú nezoradené premenné typy implementované v podobe asociatívneho poľa, ktoré mapuje množinu objektov alebo kľúčov na elementy v množine hodnôt podobne ako matematické funkcie.
 
-== Zdroje ==
-* FARA, Patricia: ''Newton : Formování génia.'' Praha : BB/art [[2004]]. 334 s. ISBN 80-7341-181-4
-* KUZNECOV, Boris Grigorjevič: ''Od Galileiho po Einsteina.'' Bratislava : Nakladateľstvo Pravda [[1975]]. 614 s. [Preklad: M. Zigo, F. Novosad]
+Iným typom kolekcií sú zoradené postupnosti — sekvenčné typy, ktoré reprezentujú zoznamy, tuple a reťazce. Všetky sekvenčné typy sú indexované pozične (od 0 po dĺžku – 1) a všetky okrem reťazcov môžu obsahovať objekty ľubovoľného typu (reťazce môžu obsahovať iba znaky, ktoré sú v Pythone reprezentované ako jednoznakové reťazce). Reťazce a tuple sú nemenné, zatiaľ čo zoznamy sú premenné, teda môžeme pridávať, odoberať alebo meniť elementy.
 
-{{DEFAULTSORT:Newton, Isaac}}
-[[Kategória:Anglickí filozofi]]
-[[Kategória:Anglickí fyzici]]
-[[Kategória:Anglickí matematici]]
-[[Kategória:Anglickí astronómovia]]
-[[Kategória:Anglickí vynálezcovia]]
-[[Kategória:Optici]]
-[[Kategória:Alchymisti]]
-[[Kategória:Okultisti]]
-[[Kategória:Geometri]]
-[[Kategória:Hermetici]]
-[[Kategória:Filozofi vedy]]
-[[Kategória:Filozofi 17. storočia]]
-[[Kategória:Teoretickí fyzici]]
-[[Kategória:Nebeská mechanika]]
-[[Kategória:Kresťanskí filozofi]]
-[[Kategória:Absolventi University of Cambridge]]
-[[Kategória:Členovia Kráľovskej spoločnosti]]
-[[Kategória:Prezidenti Kráľovskej spoločnosti]]
-[[Kategória:Osobnosti na britských bankovkách]]
-[[Kategória:Osobnosti na britských poštových známkach]]
-[[Kategória:Osobnosti na francúzskych poštových známkach]]
-[[Kategória:Osobnosti na nemeckých poštových známkach]]
+Python tak isto poskytuje rozsiahle možnosti manipulácie s kolekciami ako je zabudovaný operátor na kontrolu, či kolekcia obsahuje daný objekt, a jednoduchá iterácia pomocou "<code>for element in list</code>".
+
+=== Objektový systém ===
+Systém dátových typov Pythonu je dobre integrovaný so systémom tried. Zabudované dátové typy nie sú skutočnými triedami, ale triedy môžu od nich dediť. Takže je možné rozširovať reťazce, asociatívne polia alebo celé čísla.
+
+Jazyk podporuje rozsiahlu introspekciu typov a tried. Typy môžeme prečítať a porovnávať, teda, ako v [[Smalltalk]]u, typy sú tiež objektmi. Atribúty objektu môžeme extrahovať ako asociatívne pole.
+
+Operátory môžu byť v Pythone predefinované pomocou zadefinovania špeciálnej členskej funkcie, napríklad definovanie <code>__add__</code> v triede dovolí používať operátor <code>+</code> na inštancie triedy.
+
+== Syntax ==
+Python bol navrhovaný tak, aby bol dobre čitateľný. Má jednoduché vizuálne rozmiestnenie, často používa anglické kľúčové slová tam, kde iné jazyky používajú interpunkciu a má nápadne menej syntaktických konštrukcií ako mnohé iné štruktúrované jazyky ako [[C (programovací jazyk)|C]], [[Perl]] alebo [[Pascal]].
+
+Napríklad Python má len dva tvary cyklov: <code>for</code>, ktorý prechádza elementmi zoznamu alebo iterátoru a <code>while</code>, ktorý sa opakuje, kým hodnota výrazu je true. Chýba mu komplexný <code>for</code> v štýle [[C (programovací jazyk)|C]] a <code>do</code>...<code>while</code>, aj keď sa samozrejme dajú ekvivalentne vyjadriť. Takisto má na vetvenie iba <code>if</code>...<code>elif</code>...<code>else</code> — žiadne <code>switch</code> alebo <code>goto</code> (goto bolo implementované ako vtip pre 1. apríl 2004 ako prídavný modul).
+
+=== Syntaktická významnosť odsadenia ===
+Jedným z nezvyčajných aspektov syntaxe Pythona je spôsob, akým sa určujú bloky v programe. Je to aspekt syntaxe Pythonu, o ktorom počuli aj programátori, ktorí inak nepoznajú Python, keďže je dosť unikátny medzi jazykmi rozšírenými v súčasnosti (iný jazyk zdieľajúci túto vlastnosť je [[Haskell]]).
+
+V jazykoch, ktoré používajú blokovú štruktúru zdedenú po [[ALGOL]]e (vrátane [[Pascal]]u, [[C (programovací jazyk)|C]], [[Perl]]u a mnohých iných) bloky kódu sú oddelené pomocou zátvoriek alebo kľúčových slov ako <code>begin</code> a <code>end</code> v [[Pascal]]e. Avšak vo všetkých týchto jazykoch programátori obyčajne používajú odsadzovanie kódu v bloku od kraja, aby vizuálne oddelili blok od ostatného kódu.
+
+Python na rozdiel od toho požičiava vlastnosť z málo známeho jazyka [[ABC (programovací jazyk)|ABC]] - namiesto interpunkcie alebo kľúčových slov používa samotné odsadzovanie na určenie bloku. Ozrejmí to krátky príklad. Tu je rekurzívna funkcia v [[C (programovací jazyk)|C]] a v Pythone, ktorá robí to isté — vypočíta [[faktoriál]] celého čísla.
+
+''Faktoriál v C:''
+<source lang="c">
+ int factorial(int x) {
+     if (x == 0) {
+         return 1;
+     } else {
+         return x * factorial(x-1);
+     }
+ }
+</source>
+
+''Faktoriál v Pythone:''
+<source lang="python">
+ def factorial(x):
+     if x == 0:
+         return 1
+     else:
+         return x * factorial(x-1)
+</source>
+
+''Faktoriál v Pythone za použitia lambdy:''
+<source lang="python">
+factorial = lambda x: 1 if x==0 else x*factorial(x-1)
+</source>
+
+=== Dokumentačné reťazce ===
+Reťazec umiestnený hneď za definíciou triedy alebo funkcie alebo na začiatku modulu sa stáva asociovaným dokumentačným reťazcom (tzv. docstring). Existujú nástroje na automatické vytváranie dokumentácie vo formáte [[HTML]] založenej na dokumentačných reťazcoch.
+
+=== Funkcionálne programovanie ===
+Ako už bolo spomenuté, ďalším kladom Pythonu je dostupnosť funkcionálneho štýlu programovania. Ako sa dá očakávať, umožňuje to oveľa priamočiarejšiu prácu so zoznamami a inými kolekciami. Jedna z takýchto konštrukcií je ''list comprehension'', prebratá z funkcionálneho jazyka [[Haskell]], ako je vidieť tu na výpočte prvých piatich mocnín čísla dva:
+
+<source lang="python">
+ numbers = [1, 2, 3, 4, 5]
+ powers_of_two = [2**n for n in numbers]
+</source>
+
+Algoritmus [[quicksort]] môže byť tiež elegantne vyjadrený pomocou list comprehensions:
+
+<source lang="python">
+ def qsort(L):
+     if L == []: return []
+     return qsort([x for x in L[1:] if x< L[0] ]) + L[0:1] + \
+         qsort([x for x in L[1:] if x>=L[0] ])
+</source>
+
+Keďže Python umožňuje odovzdávať funkcie ako argumenty, je možné vyjadriť aj ďalšie funkcionálne konštrukcie.
+
+==== Lambda ====
+Pomocou kľúčového slova <code>lambda</code> môžeme vytvárať malé anonymné funkcie. Bloky <code>lambda</code> v Pythone môžu obsahovať len jeden výraz a nemôžu obsahovať príkazy. Tu je funkcia, ktorá vracia súčet svojich dvoch argumentov: <source lang="python">lambda a, b: a+b</source>
+==== Exec ====
+Python umožňuje vykonanie kódu, ktorý je napr. obsahom premennej, pomocou funkcie <code>exec</code>. V zásade je tak možné spúšťať program, ktorý bude akoby meniť sám seba. 
+Príklad: 
+<source lang="python">
+ premenna="""print "ahoj svet"; premenna="print 'tak ahoj';stale=False" """
+
+ stale=True
+
+ # keby sme nepoznali obsah premennej "premenna" mohli by sme sa domnievat, ze v dalsom riadku bude stale vykonavane to iste
+ while stale: exec premenna
+
+ """ Prebehnu vsak iba dva cykly a vypis bude:
+
+ ahoj svet
+ tak ahoj
+
+  Co sa udialo? premenna "premenna" sa vykona prvykrat - cosi vypise a zmeni svoj obsah
+  vykona sa druhykrat, ale druhykrat uz je jej obsahom zmena premennej "stale" na False
+  (plus tlac ineho textu ako v prvom cykle) takze vykonanie tretikrat uz nebude  
+ """
+</source>
+
+==== Generátory ====
+Generátory v Pythone sú mechanizmom pre tzv. "lenivé vyhodnocovanie" funkcií, ktoré by inak vracali neúmerne veľké alebo výpočtovo náročné zoznamy.
+
+Príklad:
+
+<source lang="python">
+ def generate_ints(N):
+     for i in xrange(N):
+         yield i
+</source>
+
+Teraz môžeme použiť generátor generate_ints:
+
+<source lang="python">
+ for i in generate_ints(N):
+     print i
+</source>
+
+Definícia generátora vyzerá rovnako ako definícia funkcie, len namiesto kľúčového slova <code>return</code> je použité <code>yield</code>. Volanie generátora môžeme použiť namiesto zoznamu, alebo inej štruktúry, cez elementy ktorej chceme postupne prechádzať. Vždy, keď cyklus ''for'' v príklade potrebuje ďalší prvok, zavolá sa generátor, ktorý dá ďalší prvok.
+
+=== Objektovo orientované programovanie ===
+Python má rozsiahlu podporu pre objektovo orientované programovanie. Podporuje nielen polymorfizmus tried dediacich od tej istej triedy ako v staticky typových jazykoch, ale aj plný polymorfizmus pre všetky objekty. Všetko v Pythone je objekt vrátane tried, funkcií, čísel a modulov. Python tiež podporuje metatriedy – pokročilý nástroj na rozšírenie funkcionality tried. Samozrejme podporuje dedičnosť vrátane viacnásobnej dedičnosti. Má obmedzenú podporu pre súkromné premenné.
+
+=== Spracovanie výnimiek ===
+Python podporuje spracovanie výnimiek vo význame testovania chýb a iných výnimočných udalostí v programe. Takto je možné zachytiť aj výnimku spôsobenú syntaktickou chybou.
+
+Výnimky dovoľujú stručnejšiu a spoľahlivejšiu kontrolu chýb ako iné spôsoby ohlasovania chýb alebo výnimočných udalostí. Výnimky nerobia kód neprehľadným ako testovanie vráteného kódu chyby v [[C (programovací jazyk)|C]] a môžu sa jednoducho šíriť volajúcimi funkciami, ak chyba musí byť ohlásená vyššej úrovni programu.
+
+== Štandardná knižnica ==
+Python má rozsiahlu štandardnú knižnicu, ktorá ho robí vhodným na veľa úloh. Moduly štandardnej knižnice môžu byť rozšírené vlastnými modulmi napísanými v [[C (programovací jazyk)|C]] alebo v Pythone. Štandardná knižnica je dobre prispôsobená písaniu aplikácií pracujúcich s Internetom, lebo podporuje množstvo štandardných formátov a protokolov (napríklad [[MIME]] a [[HTTP]]). Tak isto sú tam moduly pre vytváranie grafického užívateľského rozhrania, pripájanie sa k relačným databázam a manipulovanie s regulárnymi výrazmi.
+
+Väčšia časť štandardnej knižnice je kompatibilná medzi platformami, teda programy môžu pracovať v UNIX, Windows, Macintosh a iných platformách bez zmeny.
+
+== Ďalšie vlastnosti ==
+Interpreter Pythonu tiež podporuje interaktívny režim, v ktorom výrazy môžu byť zadávané z terminálu a môžeme okamžite vidieť výsledok. Je to výhoda pre tých, ktorí sa učia jazyk, ale aj pre skúsených vývojárov: časti kódu môžu byť testované v interaktívnom režime pred tým, ako budú integrované do programu. Ineraktívny shell pre python [[ipython]], ktorý podporuje okrem iného aj code highlighting a automatické dopĺňanie výrazov, môže slúžiť priam ako náhrada systémového shellu. To môže byť užitočné zvlášť pre platformu Windows, ktorej štandardný shell je veľmi nepraktický. 
+
+Python tak isto obsahuje vstavaný debugger, profiler a nástroje na testovanie (unit testing framework).
+
+== Podporované platformy ==
+Aj keď Python bol originálne programovaný pre platformu [[Amoeba OS]], táto verzia je „mŕtva“ (nie je udržiavaná). Najpopulárnejšie platformy, na ktorých pracuje Python, sú [[Linux (operačný systém)|Linux]], [[BSD]], [[Mac OS X]], [[Microsoft Windows]] a [[Java (programovací jazyk)|Java]] (Java verzia je kompletne oddelená implementácia). Mac GUI pre Python je spravované externým projektom nazývaným MacPython a bolo zahrnuté do Mac OS 10.3 „Panther“. Ďalšie podporované platformy sú:
+* [[Mac Classic]]
+* [[SPARC]] [[Solaris (operačný systém)|Solaris]]
+* tak isto ďalšie [[Unix]]y, napr. [[Irix]]
+* [[OS/2]]
+* [[Amiga]]
+* [[AROS]]
+* [[AS/400]]
+* [[BeOS]]
+* [[Berkeley Software Distribution|BSD]]
+* [[OS/390]]
+* [[z/OS]]
+* [[QNX]]
+* [[VMS]]
+* [[Psion]]
+* [[RISC OS]] (predtým Acorn)
+* [[VxWorks]]
+* [[PlayStation 2]]
+* [[Sharp Zaurus]]
+* [[Windows CE]]/[[Pocket PC]]
+* [[Palm OS]]
+* [[S60]]
+Ale väčšina knižníc pre Python je dostupná iba pre Linux, BSD, Mac OS X a Windows.
+
+== Externé odkazy ==
+* [http://www.python.org/ Domáca stránka projektu]
+* [http://python.wraith.cz/ Odborné (cz) stránky o Pythonu]
+* [http://www.py.cz/ www.py.cz PyCZ, „vše, co má alespoň něco společného s Pythonem“]
+* [http://www.freenetpages.co.uk/hp/alan.gauld/czech/cztutintro.html učebnica programovania v pythone, česky + anglicky]
+* [http://pydev.sf.net Rozšírenie PyDev do IDE Eclipse pre vývoj v Pythone]
+
+{{Významné programovacie jazyky}}
+
+[[Kategória:Programovacie jazyky]]
+[[Kategória:Python]]
+
+
 '''
 
-ANCHOR_PATTERN = '(?=(\[\[(?>[^[]]|(?1))*+\]\]))'
-ANCHOR_PATTERN2 = '(?<=\[\[)[^]]+(?=\]\])'
-ANCHOR_PATTERN3 = '(?=(\[(?>[^[]]|(?1))*+\]))'
+anchors = [
+    "Guido van Rossum",
+    "Jython",
+    "Iron Python",
+    "Súbor:Python script.svg|right|thumb|Ukážka kódu v Pythone",
+    "Interpreter (programovanie)|interpretovaný",
+    "programovací jazyk",
+    "Guido van Rossum",
+    "Amoeba OS",
+    "Systémové volanie|systémových volaní",
+    "Tcl",
+    "Perl",
+    "Scheme",
+    "Java (programovací jazyk)|Java",
+    "Ruby (programovací jazyk)|Ruby",
+    "open source",
+    "Perl",
+    "Smalltalk",
+    "Haskell",
+    "Zope",
+    "Mnet",
+    "BitTorrent",
+    "Google",
+    "JavaScript",
+    "C (programovací jazyk)|C",
+    "C Plus Plus|C++",
+    "Scheme",
+    "Lisp",
+    "Monty Python’s Flying Circus",
+    "Java (programovací jazyk)|Java",
+    "C (programovací jazyk)|C",
+    "Smalltalk",
+    "C (programovací jazyk)|C",
+    "Perl",
+    "Pascal",
+    "C (programovací jazyk)|C",
+    "Haskell",
+    "ALGOL",
+    "Pascal",
+    "C (programovací jazyk)|C",
+    "Perl",
+    "Pascal",
+    "ABC (programovací jazyk)|ABC",
+    "C (programovací jazyk)|C",
+    "faktoriál",
+    "HTML",
+    "Haskell",
+    "quicksort",
+    "C (programovací jazyk)|C",
+    "C (programovací jazyk)|C",
+    "MIME",
+    "HTTP",
+    "ipython",
+    "Amoeba OS",
+    "Linux (operačný systém)|Linux",
+    "BSD",
+    "Mac OS X",
+    "Microsoft Windows",
+    "Java (programovací jazyk)|Java",
+    "Mac Classic",
+    "SPARC",
+    "Solaris (operačný systém)|Solaris",
+    "Unix",
+    "Irix",
+    "OS/2",
+    "Amiga",
+    "AROS",
+    "AS/400",
+    "BeOS",
+    "Berkeley Software Distribution|BSD",
+    "OS/390",
+    "z/OS",
+    "QNX",
+    "VMS",
+    "Psion",
+    "RISC OS",
+    "VxWorks",
+    "PlayStation 2",
+    "Sharp Zaurus",
+    "Windows CE",
+    "Pocket PC",
+    "Palm OS",
+    "S60",
+    "Kategória:Programovacie jazyky",
+    "Kategória:Python"
+]
 
-ANCHOR_PATTERN4 = '\[\[(^())\]\]'
+
+class TestAnchors(TestCase):
+
+    def test_get_anchors(self):
+        self.assertEqual(list(get_anchors(text)), anchors)
+
+    def test_process_achor(self):
+        self.assertEqual(process_anchor("Page to|Anchor text"), ("Anchor text", "Page to"))
 
 
+if __name__ == '__main__':
+    unittest.main()
+
+# for anchor in get_anchors(text):
+#     print(anchor)
