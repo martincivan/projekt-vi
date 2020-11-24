@@ -82,7 +82,7 @@ def select_entity():
 
     entities.append({"name": f'none [{es_result["count"]}]', "value": "none"})
     return (
-        prompt([{"type": "list", "name": "entity", "message": "Select search type", "choices": entities}])["entity"],
+        prompt([{"type": "list", "name": "entity", "message": "Select entity filter", "choices": entities}])["entity"],
         input("Query: "))
 
 
